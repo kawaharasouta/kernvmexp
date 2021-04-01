@@ -13,11 +13,13 @@
 
 
 int main(int argc, char **argv) {
+	//! rom file path
 	char *rom = argv[1];
 	if (argc != 2) {
 		printf("usage: ./kvm_helloworld [rom]");
 	}
 
+	///*** rom setting ***///
 	int fd = open(rom, O_RDONLY);
 	if (fd == -1) {
 		printf("cannot open rom\n");
@@ -29,19 +31,21 @@ int main(int argc, char **argv) {
 		printf("cannot get file stat(length)\n");
 		exit(1);
 	}
-	printf("fstat.st_size: %ld\n", fstat.st_size);
+	int size = fstat.st_size;
+	printf("size: %ld\n", size);
 
-	uint8_t *rom_bin = mmap(0, fstat.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	uint8_t *rom_bin = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 	if (rom_bin == MAP_FAILED) {
 		printf("mmap failed\n");
 		exit(1);
 	}
-
-	/* printf("rom_bin: "); */
-	/* for(int i = 0; i < fstat.st_size; i++) { */
-	/* 	printf("%x ", rom_bin[i]); */
-	/* } */
-
+	uint8_t *mem = mmap(NULL, 0x1000, PROT_READ|PROT_WRITE,
+			MAP_SHARED|MAP_ANONYMOUS|MAP_NORESERVE,
+			-1, 0);
+	memcpy(mem, rom_bin, size); 
+	///*** rom setting fin ***///
+	///*** mem: bios rom for kvm ***///
+	///*** bios_size: bios rom size ***///
 
 
 	///*** KVM code ***///
@@ -56,10 +60,6 @@ int main(int argc, char **argv) {
   int vmfd = ioctl(kvmfd, KVM_CREATE_VM, 0);
 
 	//! ROM
-	uint8_t *mem = mmap(NULL, 0x1000, PROT_READ|PROT_WRITE,
-			MAP_SHARED|MAP_ANONYMOUS|MAP_NORESERVE,
-			-1, 0);
-	memcpy(mem, rom_bin, fstat.st_size); 
 	struct kvm_userspace_memory_region region = {
 		.guest_phys_addr = 0,
 		.memory_size = 0x1000,				///////// ???????????????????
